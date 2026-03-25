@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+
+  ecommerce2:
+    build:
+     context: ./ecommerce2
+     dockerfile: Dockerfile
+    ports:
+      - "7069:8081"
+    depends_on:
+      - rabbitmq
+      - sqlserver
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "P@ssw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "11433:1433"

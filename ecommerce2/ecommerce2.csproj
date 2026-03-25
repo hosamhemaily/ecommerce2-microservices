@@ -1,0 +1,63 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>f1318dd7-64bd-411a-8588-a310d186cfee</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>.</DockerfileContext>
+    <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="14.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Domain.csproj" />
+    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="DTOs\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="rabbitmq">
+      <Image>rabbitmq:3.12-management</Image>
+      <Ports>
+        <Port>5672:5672</Port>
+        <Port>15672:15672</Port>
+      </Ports>
+      <Environment>
+        <Variable Name="RABBITMQ_DEFAULT_USER" Value="guest" />
+        <Variable Name="RABBITMQ_DEFAULT_PASS" Value="guest" />
+      </Environment>
+    </Service>
+    <Service Include="ecommerce2">
+      <Build>
+        <Context>.</Context>
+        <Dockerfile>Dockerfile</Dockerfile>
+      </Build>
+      <Ports>
+        <Port>8080:8080</Port>
+        <Port>8081:8081</Port>
+      </Ports>
+      <Environment>
+        <Variable Name="ASPNETCORE_ENVIRONMENT" Value="Development" />
+        <Variable Name="RabbitMQ__HostName" Value="rabbitmq" />
+      </Environment>
+      <DependsOn>
+        <Service>rabbitmq</Service>
+      </DependsOn>
+    </Service>
+  </ItemGroup>
+
+</Project>
