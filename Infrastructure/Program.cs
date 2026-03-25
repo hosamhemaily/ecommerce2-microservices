@@ -37,6 +37,7 @@ namespace Infrastructure
             if (needpayment)
             {
                 services.AddScoped<Messaging.Consumers.PaymentResultConsumer>();
+                services.AddScoped<Messaging.Consumers.InventoryResultConsumer>();
 
                 var paymentBaseUrl = configuration["PaymentApi:BaseUrl"];
 
@@ -64,6 +65,7 @@ namespace Infrastructure
             if (needpayment)
             {
                 var paymentConsumer = provider.GetRequiredService<Messaging.Consumers.PaymentResultConsumer>();
+                var inventoryConsumer = provider.GetRequiredService<Messaging.Consumers.InventoryResultConsumer>();
 
                 eventBus.Subscribe<PaymentRequestedEvent>(
                     "PaymentRequested",
@@ -71,11 +73,24 @@ namespace Infrastructure
 
                 eventBus.Subscribe<PaymentSucceededEvent>(
                     "PaymentSucceeded",
-                    async evt => await paymentConsumer.HandleSuccess(evt));
+                    async evt => await paymentConsumer.HandleSuccess(evt));                
 
                 eventBus.Subscribe<PaymentFailedEvent>(
                     "PaymentFailed",
                     async evt => await paymentConsumer.HandleFailed(evt));
+
+                
+                eventBus.Subscribe<InventoryRequestedEvent>(
+                    "InventoryRequested",
+                    async evt => await inventoryConsumer.HandleInitial(evt));
+
+                eventBus.Subscribe<InventoryRequestedEvent>(
+                    "InventorySucceeded",
+                    async evt => await inventoryConsumer.HandleSuccess(evt));
+
+                eventBus.Subscribe<InventoryRequestedEvent>(
+                    "InventoryFailed",
+                    async evt => await inventoryConsumer.HandleFailed(evt));
             }
 
             return services;
