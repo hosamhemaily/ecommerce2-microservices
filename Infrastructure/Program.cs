@@ -29,7 +29,9 @@ namespace Infrastructure
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
+            services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             // Consumers
             services.AddScoped<Messaging.Consumers.OrderCreatedConsumer>();
@@ -84,13 +86,7 @@ namespace Infrastructure
                     "InventoryRequested",
                     async evt => await inventoryConsumer.HandleInitial(evt));
 
-                eventBus.Subscribe<InventoryRequestedEvent>(
-                    "InventorySucceeded",
-                    async evt => await inventoryConsumer.HandleSuccess(evt));
-
-                eventBus.Subscribe<InventoryRequestedEvent>(
-                    "InventoryFailed",
-                    async evt => await inventoryConsumer.HandleFailed(evt));
+                
             }
 
             return services;

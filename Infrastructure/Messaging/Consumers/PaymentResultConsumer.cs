@@ -30,11 +30,7 @@ namespace Infrastructure.Messaging.Consumers
         {
             try
             {
-                var handler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-                };
-
+                
                 var result =  await _paymentApi.InitiatePayment(evt.OrderId.ToString());
             }
             catch (Exception ex)

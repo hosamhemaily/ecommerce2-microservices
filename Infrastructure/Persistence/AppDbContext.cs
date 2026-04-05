@@ -13,10 +13,17 @@ namespace Infrastructure.Persistence
     {
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderSaga> OrderSagas { get; set; }
+        public DbSet<OutboxMessage> OutboxMessage { get; set; }
 
         public AppDbContext(DbContextOptions<AppDbContext> options)
             : base(options) { }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+        }
     }
 }
+
 
 

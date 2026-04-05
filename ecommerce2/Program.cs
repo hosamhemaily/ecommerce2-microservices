@@ -1,7 +1,8 @@
+using Application.BackgroundJobs;
 using Application.Commands;
 using Infrastructure;
-using Refit;
 using Infrastructure.PaymentHttp;
+using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder.Services.AddInfrastructure(builder.Configuration,true);
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddHostedService<OutboxProcessor>();
 
 var app = builder.Build();
 
