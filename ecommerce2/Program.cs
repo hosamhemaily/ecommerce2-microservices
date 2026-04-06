@@ -1,7 +1,12 @@
 using Application.BackgroundJobs;
 using Application.Commands;
+using Application.Interfaces;
+using Domain.Events;
 using Infrastructure;
+using Infrastructure.Messaging.Consumers;
 using Infrastructure.PaymentHttp;
+using Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +24,32 @@ builder.Services.AddOpenApi();
 builder.Services.AddHostedService<OutboxProcessor>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    await db.Database.MigrateAsync();
+
+   
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+
+    eventBus.Subscribe<OrderCreatedEvent>(
+        nameof(OrderCreatedEvent),
+        async evt =>
+        {
+            using var innerScope = app.Services.CreateScope();
+
+            var consumer = innerScope.ServiceProvider
+                .GetRequiredService<OrderCreatedConsumer>();
+
+            await consumer.Consume(evt);
+        });
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

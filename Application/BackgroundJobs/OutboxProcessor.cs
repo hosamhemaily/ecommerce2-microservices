@@ -1,5 +1,6 @@
 ﻿using Application.Interfaces;
 using Application.Interfaces.ApplicationServices;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
@@ -12,26 +13,32 @@ namespace Application.BackgroundJobs
 {
     public class OutboxProcessor : BackgroundService
     {
-        private readonly IOutboxMessageRepository _outboxMessageRepository;
-        private readonly IUnitOfWork _unitow;
-        private readonly IEventBus _bus;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public OutboxProcessor(IOutboxMessageRepository outboxMessageRepository,
-            IUnitOfWork unitow,
-            IEventBus bus)
+
+        public OutboxProcessor(
+            IServiceScopeFactory scopeFactory)
         {
-            _outboxMessageRepository = outboxMessageRepository;
-            _unitow = unitow;   
-            _bus = bus;
+            _scopeFactory = scopeFactory;
+
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                var messages = await _outboxMessageRepository.GetMessages(stoppingToken);
-                
+                using var scope = _scopeFactory.CreateScope();
 
+                var repo = scope.ServiceProvider
+                    .GetRequiredService<IOutboxMessageRepository>();
+
+                var _bus = scope.ServiceProvider
+                    .GetRequiredService<IEventBus>();
+
+                var _unitow = scope.ServiceProvider
+                    .GetRequiredService<IUnitOfWork>();
+
+                var messages = await repo.GetMessages(stoppingToken);
                 foreach (var message in messages)
                 {
                     // Deserialize and publish

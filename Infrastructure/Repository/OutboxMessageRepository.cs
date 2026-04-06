@@ -29,7 +29,7 @@ namespace Infrastructure.Repository
 
         public async Task<List<OutboxMessage>> GetMessages(CancellationToken ct)
         {
-            return await _db.OutboxMessage.ToListAsync(ct);
+            return await _db.OutboxMessage.Where(x=>x.Processed == false).ToListAsync(ct);
         }
     }
 }
