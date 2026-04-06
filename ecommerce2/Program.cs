@@ -49,6 +49,18 @@ using (var scope = app.Services.CreateScope())
 
             await consumer.Consume(evt);
         });
+
+eventBus.Subscribe<InventoryRequestedEvent>(
+    nameof(InventoryRequestedEvent),
+    async evt =>
+    {
+        using var innerScope = app.Services.CreateScope();
+
+        var consumer = innerScope.ServiceProvider
+            .GetRequiredService<InventoryResultConsumer>();
+
+        await consumer.HandleInitial(evt);
+    });
 }
 
 // Configure the HTTP request pipeline.

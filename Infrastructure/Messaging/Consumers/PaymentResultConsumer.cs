@@ -1,9 +1,11 @@
-﻿using Application.Interfaces;
+﻿using Application.Interfaces.ApplicationServices;
+using Domain.Entities;
 using Domain.Enums;
 using Domain.Events;
 using Infrastructure.PaymentHttp;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,14 +18,18 @@ namespace Infrastructure.Messaging.Consumers
     public class PaymentResultConsumer
     {
         private readonly AppDbContext _db;
-        private readonly IEventBus _bus;
         private readonly IPaymentApi _paymentApi;
-        public PaymentResultConsumer(AppDbContext db, IEventBus bus,
-            IPaymentApi paymentApi)
+        private readonly IOutboxMessageRepository _outboxRepo;
+        private readonly IUnitOfWork _unitOfWork;
+        public PaymentResultConsumer(AppDbContext db,
+            IPaymentApi paymentApi,
+            IOutboxMessageRepository outboxRepo,
+            IUnitOfWork unitOfWork)
         {
             _db = db;
-            _bus = bus;
             _paymentApi = paymentApi;
+            _outboxRepo = outboxRepo;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task HandleInitial(PaymentRequestedEvent evt)
@@ -45,17 +51,23 @@ namespace Infrastructure.Messaging.Consumers
             var saga = await  _db.OrderSagas.Where(x=>x.OrderId== evt.OrderId).FirstOrDefaultAsync();
 
             saga.PaymentCompleted = true;
-            await _db.SaveChangesAsync();
+            var inventoryRequested = new InventoryRequestedEvent(evt.OrderId);
+            await _outboxRepo.AddAsync(
+                new OutboxMessage
+                {
+                    Content = JsonSerializer.Serialize(inventoryRequested),
+                    Type = nameof( InventoryRequestedEvent)
+                },
+                CancellationToken.None);
 
-            await _bus.Publish("InventoryRequested",
-                new InventoryRequestedEvent(evt.OrderId));
+            await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task HandleFailed(PaymentFailedEvent evt)
         {
             var order = await _db.Orders.FindAsync(evt.OrderId);
             order.Status = OrderStatus.Failed;
-            await _db.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 }

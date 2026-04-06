@@ -1,14 +1,8 @@
 ﻿using Domain.Enums;
 using Domain.Events;
-using Infrastructure.PaymentHttp;
+using Infrastructure.InventoryHttp;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualBasic;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Infrastructure.Messaging.Consumers
 {
@@ -16,30 +10,35 @@ namespace Infrastructure.Messaging.Consumers
     public class InventoryResultConsumer
     {
         private readonly AppDbContext _db;
+        private readonly IInventoryApi _inventoryApi;
 
-        public InventoryResultConsumer(AppDbContext db)
+        public InventoryResultConsumer(AppDbContext db, IInventoryApi inventoryApi)
         {
             _db = db;
+            _inventoryApi = inventoryApi;
         }
+
         public async Task HandleInitial(InventoryRequestedEvent evt)
         {
             Console.WriteLine($"Inventory check requested for order {evt.OrderId}");
-            //do inventiory check here, for demo we will just randomly decide if inventory is available or not
-            if (DateTime.Now.Minute%2 == 0)
-            {
-                var saga = await _db.OrderSagas.Where(x => x.OrderId == evt.OrderId).FirstOrDefaultAsync();
 
-                saga.InventoryReserved = true;
-                await _db.SaveChangesAsync();
+            try
+            {
+                // Demo mapping: reserve 1 unit from a fixed SKU.
+                // You can extend InventoryRequestedEvent later to carry sku/quantity.
+                await _inventoryApi.AdjustAsync("DEMO-SKU-1", new AdjustInventoryRequest(-1));
+                var saga = await _db.OrderSagas.Where(x => x.OrderId == evt.OrderId).FirstOrDefaultAsync();
+                if (saga != null)
+                {
+                    saga.InventoryReserved = true;
+                    await _db.SaveChangesAsync();
+                }
             }
-            else
+            catch
             {
                 await HandleFailed(evt);
             }
-                
-
         }
-      
 
         public async Task HandleFailed(InventoryRequestedEvent evt)
         {
@@ -54,9 +53,9 @@ namespace Infrastructure.Messaging.Consumers
                 attempt++;
                 Console.WriteLine($"Retrying inventory reservation for order {evt.OrderId}, attempt {attempt}...");
 
-                // Mock retry logic: randomly succeed
-                if (DateTime.Now.Second % 2 == 0)
+                try
                 {
+                    var resultinventoryresponse = await _inventoryApi.AdjustAsync("DEMO-SKU-1", new AdjustInventoryRequest(-1));
                     var saga = await _db.OrderSagas.Where(x => x.OrderId == evt.OrderId).FirstOrDefaultAsync();
                     if (saga != null)
                     {
@@ -65,6 +64,10 @@ namespace Infrastructure.Messaging.Consumers
                         success = true;
                         Console.WriteLine($"Inventory reservation succeeded on retry {attempt} for order {evt.OrderId}.");
                     }
+                }
+                catch
+                {
+                    // Keep retry loop behavior for transient failures.
                 }
 
                 if (!success && attempt < maxRetries)

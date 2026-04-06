@@ -1,5 +1,6 @@
 ﻿using Application.Interfaces;
 using Application.Interfaces.ApplicationServices;
+using Infrastructure.InventoryHttp;
 using Infrastructure.PaymentHttp;
 using Infrastructure.Persistence;
 using Infrastructure.Repository;
@@ -39,11 +40,24 @@ public static class DependencyInjection
             services.AddScoped<InventoryResultConsumer>();
 
             var paymentBaseUrl = configuration["PaymentApi:BaseUrl"];
+            var inventoryBaseUrl = configuration["InventoryApi:BaseUrl"];
 
             services.AddRefitClient<IPaymentApi>()
                 .ConfigureHttpClient(c =>
                 {
                     c.BaseAddress = new Uri(paymentBaseUrl);
+                })
+                .ConfigurePrimaryHttpMessageHandler(() =>
+                    new HttpClientHandler
+                    {
+                        ServerCertificateCustomValidationCallback =
+                            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                    });
+
+            services.AddRefitClient<IInventoryApi>()
+                .ConfigureHttpClient(c =>
+                {
+                    c.BaseAddress = new Uri(inventoryBaseUrl);
                 })
                 .ConfigurePrimaryHttpMessageHandler(() =>
                     new HttpClientHandler
